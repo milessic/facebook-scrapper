@@ -158,5 +158,5 @@ cython_debug/
 *playwright-log.txt
 *urls.json
 *notification_*.txt
-notification_1723637834.html notification_1723637841.html notification_1723639807.html notification_1723639847.html notification_1723639875.html notification_1723640097.html notification_1723640230.html notification_1723640399.html notification_24_14_05.html notification_24_14_24.html notification_24_14_25.html notification_24_19_24.html notification_test_1.html notification_test1.html
-asdas.db fb.db fb_scrapper.db
+*notification_*.html
+*.db
