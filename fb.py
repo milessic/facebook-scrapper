@@ -99,9 +99,7 @@ class MyBrowser(Browser):
                     for e in self.get_elements(L.show_more):
                         self.slow_click(e)
                 except Exception as e:
-                    print(traceback.format_exc())
-                    traceback.print_exc(file=sys.stdout)
-                    self.save_to_log(f"WARNING - {name} - {i} - could not click show more due to {e}",console=False)
+                    pass
                 content = self.get_text(locator)
             except:
             # scroll to bottom if needed
@@ -112,7 +110,10 @@ class MyBrowser(Browser):
                     self.save_to_log(f"Could not get content, closing ar {i}")
                     break
             # check if post already exists
-            post_exists = not bool(len(self.fetch_post_by_first_40(name, content[:40])[0]))
+            first_40_this = self.fetch_post_by_first_40(name, content[:40])[0]
+            self.save_to_log(f"x-x-x {content[:10]}\n{first_40_this}\n\n")
+            post_exists = bool(len(first_40_this))
+            self.save_to_log(f"{post_exists} - x-x-x {content[:10]}\n{first_40_this}\n\n")
             try:
                 #self.save_to_log("last_scrapped:\n"+str(last_scrapped[0][0]).lower()+"\n-x-x-x-\n"+ str(content[:40]).lower() + ".end", console=True)
                 if post_exists:
@@ -138,7 +139,7 @@ class MyBrowser(Browser):
 
     def fetch_post_by_first_40(self, name:str, first_40:str):
         query = (
-            'SELECT id'
+            'SELECT id '
             'FROM scraps '
             f'WHERE page_name=(?) '
             f'AND post_first_40=(?) '
