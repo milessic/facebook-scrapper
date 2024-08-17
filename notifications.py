@@ -64,7 +64,7 @@ class NotificaitonGenerator:
                 "SELECT page_name, date, post_content "
                 "FROM scraps "
                 "WHERE notification_sent=0 "
-                "ORDER BY id DESC"
+                "ORDER BY id ASC"
                 )
         results = self.db.execute(query)[0]
         with open(pathlib.Path(self.path, "notificationx.log"),"a")as f:
@@ -111,8 +111,10 @@ class NotificaitonGenerator:
         message += f["msg_end"]
         if len(message) <= (len(f["msg_end"]) + len(f["msg_start"])):
             message = self.return_template("empty", content_type)
-        with open(pathlib.Path(self.path, f"notification_{self.execution_id}.{file_extension}"), "w") as f:
+        save_file_path = pathlib.Path(self.path, f"notification_{self.execution_id}.{file_extension}")
+        with open(save_file_path, "w") as f:
             f.write(message)
+        print(f"Saved notificaiton to {save_file_path}")
         self.mark_all_sent()
 
     def bold_first_sentence(self, msg:str, content_type) ->str:
