@@ -35,7 +35,7 @@ class NotificaitonGenerator:
                 "msg_end": "",
                 },
             "html":{
-                "msg_start": """<!doctype html><html><body style="background: #f6f4f2;font-family:'Courier New';color:#263238;">""",
+                "msg_start": """<!doctype html><html><head><meta charset="UTF-8"></head><body style="background: #f6f4f2;font-family:'Courier New';color:#263238;">""",
                 "msg_end": "</body></html>",
                 "hs": """<span style="background: #FFFFFF;"><h1 style="display:block;text-align:center;margin-left:40px;margin-top: 20px;margin-right:40px;margin-bottom:10px;">""",
                 "he": "</h1></span>",
@@ -57,6 +57,8 @@ class NotificaitonGenerator:
         self.path = pathlib.Path(starting_path)
         self.db = SqLite3Connector(pathlib.Path(self.path, "fb_scrapper.db"))
         self.execution_id = execution_id if execution_id is not None else int(time())
+        self.log_path = pathlib.Path(self.path, "logs", "notifications.log")
+        self.notificaitons_path = pathlib.Path(self.path, "notifications")
 
     def fetch_all_unsent(self):
         # get all unsent
@@ -67,7 +69,7 @@ class NotificaitonGenerator:
                 "ORDER BY id ASC"
                 )
         results = self.db.execute(query)[0]
-        with open(pathlib.Path(self.path, "notificationx.log"),"a")as f:
+        with open(self.log_path,"a")as f:
             for i, q in enumerate(results):
                 f.write(f"==={i} Query\n{q}\n\n")
         return results
@@ -111,7 +113,7 @@ class NotificaitonGenerator:
         message += f["msg_end"]
         if len(message) <= (len(f["msg_end"]) + len(f["msg_start"])):
             message = self.return_template("empty", content_type)
-        save_file_path = pathlib.Path(self.path, f"notification_{self.execution_id}.{file_extension}")
+        save_file_path = pathlib.Path(self.notificaitons_path, f"notification_{self.execution_id}.{file_extension}")
         with open(save_file_path, "w") as f:
             f.write(message)
         print(f"Saved notificaiton to {save_file_path}")
@@ -143,8 +145,8 @@ class NotificaitonGenerator:
     def return_template(self, template:str, content_type:str) -> str:
         f = self.formatting[content_type]
         templates = {
-            "empty": f"""{f["msg_start"]}{f["hs"]}There were 0 new posts from your pages{f["he"]}
-Have a great day!{f["msg_end"]}"""
+            "empty": f"""{f["post_start"]}{f["content_start"]}{f["msg_start"]}{f["h2s"]}There were 0 new posts from your pages{f["h2e"]}
+Have a great day!{f["content_end"]}{f["post_end"]}{f["msg_end"]}"""
                 }
         return templates[template]
 

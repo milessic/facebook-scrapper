@@ -1,3 +1,4 @@
+import requests
 from Browser import Browser
 import traceback
 import sys
@@ -32,7 +33,7 @@ cp.read(".config.ini")
 class MyBrowser(Browser):
     fb_url = "https://facebook.com"
 
-    def __init__(self, start_path, *args, **kwargs):
+    def __init__(self, start_path, scrap_with_web:bool=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_path = pathlib.Path(start_path)
         self.urls= json.load(open(pathlib.Path(self.start_path, "urls.json"),"r"))
@@ -49,8 +50,9 @@ class MyBrowser(Browser):
             self.print_name = False
         self.register_keyword_to_run_on_failure("take_screenshot")
         self.log_file_name = f"fb_log_{self.get_timestamp_file()}.log"
-        self.log_file_path = pathlib.Path(self.start_path, self.log_file_name)
+        self.log_file_path = pathlib.Path(self.start_path, "logs",self.log_file_name)
         self.output_file_name = f"fb_output_{self.get_timestamp_file()}.log"
+        self.pat = open(pathlib.Path(self.start_path, "pat.creds"),"r").read()
 
     def open_fb(self):
         self.new_browser(headless=self.headless_setting)
@@ -78,6 +80,19 @@ class MyBrowser(Browser):
             except Exception as e:
                 self.save_to_log(f"ERROR: could not scrap '{k}' due to {type(e).__name__}: {traceback.format_exc()}")
 
+    def scrap_from_endpoint(self, name, max_posts:int=10):
+        posts_endpoint = f"https://graph.facebook.com/v20.0/{name}/published_posts"
+        posts_endpoint = f"https://graph.facebook.com/v12.0/{name}/posts"
+        posts_endpoint = f"https://graph.facebook.com/v20.0/{name}/feed"
+        params = {
+            'access_token': self.pat,
+            #'limit': max_posts,
+            #'fields': 'message,created_time'
+        }
+        resp= requests.get(posts_endpoint, params=params)
+        resp.raise_for_status()
+        print(resp.json())
+
     def scrap_page(self, name, url, max_posts:int=10):
         # get last post to scrap
         # set locators
@@ -92,8 +107,22 @@ class MyBrowser(Browser):
             print(f"\t- post number {i}")
             i += 1
             # set post locator
+            this_year = datetime.now().strftime("%Y")
+            previous_year = str(int(this_year) - 1)
             locator = f"({L.post_div})[{i}]"
+            now_date = self.get_timestamp_post()
+            date_locator = f"""//div/span[contains(text()," {this_year}") or contains(text()," ({previous_year})")]"""
+            print(date_locator)
             # get post data
+            # get post date
+            self.hover(locator, 70, -15, force=True)
+            self.sleep_random(1)
+            try:
+                post_date = self.get_text(date_locator)
+            except Exception as e:
+                self.take_screenshot(f"{self.log_file_path}""date-{index}")
+                self.save_to_log(f"Could not get timestamp! {i} due to {type(e).__name__}: {e}", console=True)
+                post_date = now_date
             try:
                 try:
                     for e in self.get_elements(L.show_more):
@@ -123,13 +152,13 @@ class MyBrowser(Browser):
             except IndexError:
                 self.save_to_log(f"WARNING {name} - {i} - could not be compared with latest posts", console=self.console)
             # save 
-            now_date = self.get_timestamp_post()
             if self.debug:
                 self.save_to_log(f"DEBUG {name} - {i} - name: {name}, date: {now_date}\n\tcontent: {content}")
             self.insert_scrapped_post(
                     page_name=name,
-                    date=now_date,
-                    post_content=content
+                    date=post_date,
+                    post_content=content,
+                    created_date=now_date
                     )
         self.save_to_log(f"Scrapped {i-1} posts from {name}")
 
@@ -149,13 +178,13 @@ class MyBrowser(Browser):
         args = (name, first_40)
         return self.db.execute(query, *args)
 
-    def insert_scrapped_post(self, page_name:str, date:str, post_content:str):
+    def insert_scrapped_post(self, page_name:str, date:str, post_content:str,created_date:str):
         query = (
                 'INSERT INTO scraps '
-                '(page_name, date, post_content, post_first_40, notification_sent) '
-                f'VALUES ((?), (?), (?), (?), 0)'
+                '(page_name, date, post_content, post_first_40, notification_sent, created_date) '
+                f'VALUES ((?), (?), (?), (?), 0, (?))'
                 )
-        args = (page_name, date, post_content, post_content[:40])
+        args = (page_name, date, post_content, post_content[:40], created_date)
         result = self.db.execute(query, *args)
         try:
             if "ERROR" in result[0][0]:
@@ -196,6 +225,9 @@ class MyBrowser(Browser):
 
 
 if __name__ == "__main__":
+    web_scrapping = True
+    if "--api" in sys.argv:
+        web_scrapping = False
     if "--email" in sys.argv\
     and "--password" in sys.argv\
     and "--fullname" in sys.argv\
@@ -213,7 +245,10 @@ if __name__ == "__main__":
         except:
             raise FileNotFoundError("Could not find 'fb_creds.config.json file or it is not JSON seriazable!'")
     b = MyBrowser(start_path = start_path)
-    b.open_fb()
-    b.login(login_creds)
-    b.scrap_from_ulrs()
+    if web_scrapping:
+        b.open_fb()
+        b.login(login_creds)
+        b.scrap_from_ulrs()
+    else:
+        b.scrap_from_endpoint("393644427360778")
 
