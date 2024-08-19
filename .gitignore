@@ -160,3 +160,5 @@ cython_debug/
 *notification_*.txt
 *notification_*.html
 *.db
+*pat.creds
+notifications/*
