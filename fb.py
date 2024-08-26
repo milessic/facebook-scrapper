@@ -136,13 +136,11 @@ class MyBrowser(Browser):
                 try:
                     content = self.get_text(locator)
                 except:
-                    self.save_to_log(f"Could not get content, closing ar {i}")
+                    #self.save_to_log(f"Could not get content, closing ar {i}")
                     break
             # check if post already exists
             first_40_this = self.fetch_post_by_first_40(name, content[:40])[0]
-            self.save_to_log(f"x-x-x {content[:10]}\n{first_40_this}\n\n")
             post_exists = bool(len(first_40_this))
-            self.save_to_log(f"{post_exists} - x-x-x {content[:10]}\n{first_40_this}\n\n")
             try:
                 #self.save_to_log("last_scrapped:\n"+str(last_scrapped[0][0]).lower()+"\n-x-x-x-\n"+ str(content[:40]).lower() + ".end", console=True)
                 if post_exists:
