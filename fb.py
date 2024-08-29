@@ -1,4 +1,3 @@
-import requests
 from Browser import Browser
 import traceback
 import sys
@@ -52,7 +51,6 @@ class MyBrowser(Browser):
         self.log_file_name = f"fb_log_{self.get_timestamp_file()}.log"
         self.log_file_path = pathlib.Path(self.start_path, "logs",self.log_file_name)
         self.output_file_name = f"fb_output_{self.get_timestamp_file()}.log"
-        self.pat = open(pathlib.Path(self.start_path, "pat.creds"),"r").read()
 
     def open_fb(self):
         self.new_browser(headless=self.headless_setting)
@@ -79,19 +77,6 @@ class MyBrowser(Browser):
                 self.scrap_page(k,v)
             except Exception as e:
                 self.save_to_log(f"ERROR: could not scrap '{k}' due to {type(e).__name__}: {traceback.format_exc()}")
-
-    def scrap_from_endpoint(self, name, max_posts:int=10):
-        posts_endpoint = f"https://graph.facebook.com/v20.0/{name}/published_posts"
-        posts_endpoint = f"https://graph.facebook.com/v12.0/{name}/posts"
-        posts_endpoint = f"https://graph.facebook.com/v20.0/{name}/feed"
-        params = {
-            'access_token': self.pat,
-            #'limit': max_posts,
-            #'fields': 'message,created_time'
-        }
-        resp= requests.get(posts_endpoint, params=params)
-        resp.raise_for_status()
-        print(resp.json())
 
     def scrap_page(self, name, url, max_posts:int=10):
         # get last post to scrap
