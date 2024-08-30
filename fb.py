@@ -31,6 +31,7 @@ cp.read(".config.ini")
 
 class MyBrowser(Browser):
     fb_url = "https://facebook.com"
+    no_login = True
 
     def __init__(self, start_path, scrap_with_web:bool=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -49,13 +50,20 @@ class MyBrowser(Browser):
             self.print_name = False
         self.register_keyword_to_run_on_failure("take_screenshot")
         self.log_file_name = f"fb_log_{self.get_timestamp_file()}.log"
+        self.log_file_directory = pathlib.Path(self.start_path, "logs")
         self.log_file_path = pathlib.Path(self.start_path, "logs",self.log_file_name)
         self.output_file_name = f"fb_output_{self.get_timestamp_file()}.log"
 
     def open_fb(self):
         self.new_browser(headless=self.headless_setting)
+        self.new_context(locale="pl-PL")
         self.new_page(self.fb_url)
-        self.wait_for_elements_state(L.accept)
+        self.set_viewport_size(1920, 1080)
+        try:
+            self.wait_for_elements_state(L.accept)
+        except Exception as e:
+            self.save_to_log(self.get_text("//body"))
+            raise
         self.sleep_random(3)
         self.slow_click(L.accept)
         self.wait_for_elements_state(L.mail)
@@ -66,8 +74,16 @@ class MyBrowser(Browser):
         self.slow_type_text(L.mail, credentials["email"])
         self.slow_type_text(L.password, credentials["password"])
         self.slow_click(L.login_btn)
-        self.wait_for_elements_state(f"""//span[contains(text(),"{credentials['fullname']}")]""", timeout=100)
-        self.save_to_log(f"Logged successfully{' as ' + credentials['fullname'] if self.print_name else ''}")
+        try:
+            self.wait_for_elements_state(f"""//span[contains(text(),"{credentials['fullname']}")]""", timeout=100)
+            self.save_to_log(f"Logged successfully{' as ' + credentials['fullname'] if self.print_name else ''}")
+            self.no_login = False
+        except Exception as e:
+            self.save_to_log(self.get_text("//body"))
+            self.save_to_log(f"Could not verify that login was succeaful! {'as ' + credentials['fullname'] if self.print_name else ''}")
+            self.take_screenshot(f"{self.log_file_directory}/login-failed-index")
+            print(f"{self.log_file_directory}/login-failed-index")
+            sys.exit(1)
 
     def scrap_from_ulrs(self):
         if not len(self.urls):
@@ -77,6 +93,10 @@ class MyBrowser(Browser):
                 self.scrap_page(k,v)
             except Exception as e:
                 self.save_to_log(f"ERROR: could not scrap '{k}' due to {type(e).__name__}: {traceback.format_exc()}")
+                try:
+                    self.take_screenshot(f"{self.log_file_directory}/scrap-failed-{v}-index")
+                except Exception as e:
+                    self.save_to_log(f"Could not take screenshrot of scrap-failed-{v}! due to {type(e).__name__}: {e}")
 
     def scrap_page(self, name, url, max_posts:int=10):
         # get last post to scrap
@@ -85,6 +105,10 @@ class MyBrowser(Browser):
         # go to the page
         self.save_to_log(f"Starting scrap: '{name}'", console=self.console)
         self.go_to(url)
+        if self.no_login:
+            self.wait_for_elements_state("""(//span[text()="Wyświetl więcej na Facebooku"])[1]""")
+            self.sleep_random(2)
+            self.press_keys("//body","Escape") # in case of no-login scenario
         self.wait_for_elements_state(page_name_locator, timeout=100, message=f"Could not verify that '{name}' was opened as '{page_name_locator}' was not found")
         # scrap data
         i = 0
@@ -105,7 +129,7 @@ class MyBrowser(Browser):
             try:
                 post_date = self.get_text(date_locator)
             except Exception as e:
-                self.take_screenshot(f"{self.log_file_path}""date-{index}")
+                self.take_screenshot(f"{self.log_file_directory}/""date-{index}")
                 self.save_to_log(f"Could not get timestamp! {i} due to {type(e).__name__}: {e}", console=True)
                 post_date = now_date
             try:
@@ -209,9 +233,19 @@ class MyBrowser(Browser):
 
 if __name__ == "__main__":
     web_scrapping = True
+    if "--nologin" in sys.argv\
+    or "--no-login" in sys.argv:
+        perform_login = False
+    else:
+        perform_login = True
+    if "--startpath" in sys.argv:
+        start_path = sys.argv[sys.argv.index("--startpath") + 1]
+    else:
+        raise KeyError("--startpath not provided! please provide path, where scrapper is located!")
     if "--api" in sys.argv:
         web_scrapping = False
-    if "--email" in sys.argv\
+    if perform_login\
+    and "--email" in sys.argv\
     and "--password" in sys.argv\
     and "--fullname" in sys.argv\
     and "--startpath" in sys.argv:
@@ -221,7 +255,7 @@ if __name__ == "__main__":
                 "fullname": sys.argv[sys.argv.index("--fullname")+1],
                 }
         start_path = sys.argv[sys.argv.index("--startpath") + 1]
-    else:
+    elif perform_login:
         try:
             login_creds = json.load(open("fb_creds.config.json", "r"))
             start_path = login_creds["start_path"]
@@ -230,7 +264,10 @@ if __name__ == "__main__":
     b = MyBrowser(start_path = start_path)
     if web_scrapping:
         b.open_fb()
-        b.login(login_creds)
+        if perform_login:
+            b.login(login_creds)
+        else:
+            b.save_to_log("No login option selected.")
         b.scrap_from_ulrs()
     else:
         b.scrap_from_endpoint("393644427360778")
