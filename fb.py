@@ -127,6 +127,7 @@ class MyBrowser(Browser):
                     self.wait_for_elements_state(locator)
                 except:
                     self.save_to_log(f"Cannot load post {i}! due to {e}")
+                    self.save_to_log("FULL BODY START:\n" + self.get_text("//body") + "FULL BODY END", console=False)
                     continue
             now_date = self.get_timestamp_post()
             date_locator = f"""//div/span[contains(text()," {this_year}") or contains(text()," ({previous_year})")]"""
