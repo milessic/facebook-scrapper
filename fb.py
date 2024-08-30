@@ -147,7 +147,6 @@ class MyBrowser(Browser):
                 err = "no err yet???"
                 try:
                     post_date = self.get_text(date_locator)
-                    post_date = now_date
                     break
                 except Exception as e:
                     err = str(e)
