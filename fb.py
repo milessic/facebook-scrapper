@@ -119,19 +119,43 @@ class MyBrowser(Browser):
             this_year = datetime.now().strftime("%Y")
             previous_year = str(int(this_year) - 1)
             locator = f"({L.post_div})[{i}]"
+            try:
+                self.wait_for_elements_state(locator)
+            except Exception as e:
+                try:
+                    self.scroll_to_bottom()
+                    self.wait_for_elements_state(locator)
+                except:
+                    self.save_to_log(f"Cannot load post {i}! due to {e}")
+                    continue
             now_date = self.get_timestamp_post()
             date_locator = f"""//div/span[contains(text()," {this_year}") or contains(text()," ({previous_year})")]"""
             print(date_locator)
             # get post data
             # get post date
-            self.hover(locator, 70, -15, force=True)
-            self.sleep_random(1)
+            self.sleep_random(3)
             try:
-                post_date = self.get_text(date_locator)
+                self.hover(locator, 70, -15, force=True)
             except Exception as e:
-                self.take_screenshot(f"{self.log_file_directory}/""date-{index}")
-                self.save_to_log(f"Could not get timestamp! {i} due to {type(e).__name__}: {e}", console=True)
-                post_date = now_date
+                self.take_screenshot(f"{self.log_file_directory}"+"-cannot-get-date-{index}")
+                self.save_to_log(f"Couldn't get date due to {e}!")
+                raise
+            self.sleep_random(1)
+            post_date = self.get_timestamp_post() + " (could not read from page)"
+            for j in range(4):
+                err = "no err yet???"
+                try:
+                    post_date = self.get_text(date_locator)
+                    post_date = now_date
+                    break
+                except Exception as e:
+                    err = str(e)
+                    self.sleep_random(3)
+                    self.hover(locator, 70, -15, force=True)
+                if j == 3:
+                    self.take_screenshot(f"{self.log_file_directory}/""date-{index}")
+                    self.save_to_log(f"Could not get timestamp! {i} due to {err}", console=True)
+                    break
             try:
                 try:
                     for e in self.get_elements(L.show_more):
@@ -143,10 +167,16 @@ class MyBrowser(Browser):
             # scroll to bottom if needed
                 self.scroll_to_bottom()
                 try:
+                    for e in self.get_elements(L.show_more):
+                        self.slow_click(e)
+                except Exception as e:
+                    pass
+                content = self.get_text(locator)
+                try:
                     content = self.get_text(locator)
-                except:
+                except Exception as e:
                     #self.save_to_log(f"Could not get content, closing ar {i}")
-                    break
+                    self.save_to_log(f"Could not read post {i} due to {e}")
             # check if post already exists
             first_40_this = self.fetch_post_by_first_40(name, content[:40])[0]
             post_exists = bool(len(first_40_this))
