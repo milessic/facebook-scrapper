@@ -12,7 +12,7 @@ Uses Browser, sqlite3
 - install ``nodejs``
 - instal requirements ``pip -r install requirements.txt``
 - create ``urls.json`` file in root repo directory (exapmle below)
-- create sqlite3 database named ``fb_scrapper``
+- create sqlite3 database named ``fb_scrapper.db``
 ```sqlite3
 CREATE TABLE scraps (
     id INTEGER PRIMARY KEY,
@@ -26,6 +26,10 @@ CREATE TABLE scraps (
 ```
 
 # Okay, okay, but how to use it?
+Scrapper supports two scenarios, without login (reccomended), and with login.
+
+The no-login scenario is a default one, but if you pass --fullname, --email and --password, or --use-login-file (with passing path to the credentials file) it will follow login scenario.
+
 This is a bash example:
 ```bash
 python3 "fb.py" --fullname "FULL NAME OF YOUR ACCOUNT" --email "mail_or_login_to_login@domain.com" --password "secure password to your account" --startpath "facebook_scrapper repository directory"
